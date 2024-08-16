@@ -38,6 +38,7 @@ Essential settings in mean field input files:
   kgrid.x kgridq.inp kgrid.out kgrid.log
   ```
   4. Use these grids in the `bands` calculations used for `WFN` and `WFNq`.
+*  See tutorials, but note that semiconductors and insulators can generally be calculated with somewhat coarse k-grids. Metals however require very fine k-grid sampling to resolve the Fermi surface. `Epsilon` and `Sigma` are compatible with 
 
 #### Advanced DFT settings
 * BerkeleyGW can be used with Meta-GGA and hybrid functionals with certain settings fixed: check the [`pw2bgw.x` input documentation](http://manual.berkeleygw.org/4.0/pw2bgw-input/) for relevant flags. In particular, we recommend using the `kih.dat` file rather than `vxc.dat` with the flag `kih_file=.true.` Run `pw2bgw.x` in serial when writing `kih.dat`, and use `use_kih_dat / dont_use_vxcdat` in `sigma.inp`.
@@ -47,3 +48,9 @@ Essential settings in mean field input files:
 * Convert the `WFN`/`WFNq` files to the HDF5 format with `wfn2hdf.x BIN WFN WFN.h5`, then add the `use_wfn_hdf5` flags to `epsilon.inp`,`sigma.inp`, etc. This allows for faster I/O.
 * Use [Parabands with Stochastic Pseudobands](http://manual.berkeleygw.org/4.0/parabands-overview/), a module inside BerkeleyGW to effectively compress hundreds of unoccupied bands in `WFN.h5` by a factor of >50. This is a new and exciting feature in BerkeleyGW that can speed up `epsilon`/`sigma` calculations by 10x-1000x. (There are two ways to use pseudobands: the first is to perform a QE calculation on the occupied bands + at least one unoccupied band, then use the Parabands Fortran module with the input files above. This is generally faster than QE but is not compatible with DFT+U. For DFT+U, you can calculate all desired band with QE and use `pseudobands.py` to compress the QE wavefunctions; this works in all cases).
 
+
+## Epsilon
+* There are three possible values for the `frequency_dependence` flag. The default is to calculate only the zero-frequency dielectric matrix. This is used in the Hybertsen-Louie Generalized Plasmon Pole Model (GPP), which offers ~0.1-0.2 eV accuracy of the QP energies near the Fermi energy at low cost. Another option is to compute the two frequencies used by the Godby-Needs Plasmon Pole Model, which is known to perform better in certain systems with localized electrons, see [[1]](https://journals.aps.org/prb/pdf/10.1103/PhysRevB.88.125205) and other literature. Full frequency calculations calculate the dielectric matrix across the whole frequency range, increasing accuracy and giving access to spectral functions and lifetimes. It is also more accurate further from the Fermi energy and in systems with localized d/f electrons, though it has a much greater cost. 
+
+## Sigma
+* The (default) static remainder option in the code extrapolates trends from the finite sum-over-bands to the infinite sum limit. It is recommended in all cases.
