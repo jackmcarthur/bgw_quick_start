@@ -5,7 +5,7 @@ Markdown pages meant to serve as a quick start guide to using BerkeleyGW to calc
 
 This guide is meant to give the reader an understanding of those parts of the mean field -> GW (-> BSE) workflow codes that vary on a material-dependent basis. Before performing calculations on your own materials, we strongly recommend performing some of the example calculations found on the website from our [most recent tutorial workshop](https://workshop.berkeleygw.org/tutorial-workshop/about). When moving on to your own materials of interest, you can adapt input files from the tutorial most similar to your desired calculation as a starting point (i.e. the hBN/MoS2 tutorials for 2D materials, the sodium tutorial for calculations of metals, the SOC tutorial for fully-relativistic calculations...). Some other example input files can be found in the [BerkeleyGW examples repository](https://github.com/BerkeleyGW/BerkeleyGW-examples/tree/master) or even the [test suite](https://github.com/BerkeleyGW/BerkeleyGW/tree/master/testsuite).
 
-There are two classes of parameters that aspiring BerkeleyGW users will need to change for each material considered: **physical parameters** and **convergence parameters**. Discussions of all of these quantities (and most of the information in this guide) can be found in the presentations from the [most recent tutorial workshop](https://workshop.berkeleygw.org/tutorial-workshop/about).
+There are two classes of parameters that aspiring BerkeleyGW users need to know  material considered: **calculation settings**, the input flags which switch different routines on and off in the code, and **convergence parameters**, the input flags with values that are varied to trade off between computational cost and accuracy. Discussions of all of these quantities (and most of the information in this guide) can be found in the presentations from the [most recent tutorial workshop](https://workshop.berkeleygw.org/tutorial-workshop/about).
 
 
 ## Mean field calculations
@@ -14,9 +14,13 @@ All calculations in BerkeleyGW must begin with mean-field calculations in one of
 
 Essential settings in mean field input files:
 
+#### Pseudopotentials
+
 * You must use norm conserving pseudopotentials, not PAW or ultrasoft. We recommend those from [Pseudo Dojo](http://www.pseudo-dojo.org/).
 
-* Norm conserving pseudopotentials require larger wavefunction cutoffs than PAW/ultrasoft. We recommend a 100 Ry cutoff for wavefunctions and 400 Ry for the charge density (or 80 Ry/320 Ry for more intensive computations). This is `ecutwfc = 80.0` in QE.
+* Norm conserving pseudopotentials require larger wavefunction cutoffs than PAW/ultrasoft. We recommend a 100 Ry cutoff for wavefunctions and 400 Ry for the charge density (or 80 Ry/320 Ry for more intensive computations). This is `ecutwfc = 80.0` in Quantum ESPRESSO (QE).
+
+#### K-grids
 
 * k-point grids in bands calculations must be generated with `kgrid.x`, to be compatible with the symmetries used in BGW. For QE, this can be done quickly with the `data-file2kgrid.py` utility:
 
@@ -34,3 +38,12 @@ Essential settings in mean field input files:
   kgrid.x kgridq.inp kgrid.out kgrid.log
   ```
   4. Use these grids in the `bands` calculations used for `WFN` and `WFNq`.
+
+#### Advanced DFT settings
+* BerkeleyGW can be used with Meta-GGA and hybrid functionals with certain settings fixed: check the [`pw2bgw.x` input documentation](http://manual.berkeleygw.org/4.0/pw2bgw-input/) for relevant flags. In particular, we recommend using the `kih.dat` file rather than `vxc.dat` with the flag `kih_file=.true.` Run `pw2bgw.x` in serial when writing `kih.dat`, and use `use_kih_dat / dont_use_vxcdat` in `sigma.inp`.
+* BerkeleyGW is compatible with spin-polarized and non-collinear spinor wavefunctions with no additional flags; simply include compatible flags and pseudopotentials in your mean field input.
+
+#### Tips for advanced users:
+* Convert the `WFN`/`WFNq` files to the HDF5 format with `wfn2hdf.x BIN WFN WFN.h5`, then add the `use_wfn_hdf5` flags to `epsilon.inp`,`sigma.inp`, etc. This allows for faster I/O.
+* Use [Parabands with Stochastic Pseudobands](http://manual.berkeleygw.org/4.0/parabands-overview/), a module inside BerkeleyGW to effectively compress hundreds of unoccupied bands in `WFN.h5` by a factor of >50. This is a new and exciting feature in BerkeleyGW that can speed up `epsilon`/`sigma` calculations by 10x-1000x. (There are two ways to use pseudobands: the first is to perform a QE calculation on the occupied bands + at least one unoccupied band, then use the Parabands Fortran module with the input files above. This is generally faster than QE but is not compatible with DFT+U. For DFT+U, you can calculate all desired band with QE and use `pseudobands.py` to compress the QE wavefunctions; this works in all cases).
+
