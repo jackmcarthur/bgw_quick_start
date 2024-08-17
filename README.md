@@ -91,16 +91,23 @@ All calculations in BerkeleyGW must begin with mean-field calculations in one of
 * Exciton binding energies generally converge slowly and non-monotonically with the fine-k-grid size in `WFN_fi`, and the more localized an exciton in k-space, the denser the k-grid must be for convergence. This is especially challenging in certain low-dimensional systems like TMDs, where the excitons are tightly localized to the K and K' valleys. Patched sampling may be useful in these cases.
 
 ## Convergence parameters for all systems
-* There are five 
+* *These parameters all vary by system, and convergence should always be tested for novel systems.*
+* There is both new and old literature benchmarking GW convergence parameters for different systems; [this recent work](https://www.nature.com/articles/s41524-024-01311-9) converges the parameters below for many bulk semiconductors, and [this work](https://pubs.acs.org/doi/full/10.1021/acs.jctc.5b00453) does the same for the "GW100" set of molecules.
+* **Screened Coulomb (G-vector) cutoff for the dielectric matrix/self-energy calculation**: Typical values for ~50 meV accuracy for simple sp semiconductors (without semicore states) are 15-20 Ry. For systems with semicore electrons or d/f electrons, the converged value can be as high as 40-50 Ry.
+* **Number of unoccupied bands in the dielectric matrix summation/Coulomb-hole summation**: This scales as the number of atoms in your unit cell, making it hard to give ballpark values, but it is generally larger when atoms with semicore electrons or d/f electrons are present. For silicon (2 atoms in unit cell), 600 bands are necessary for ~50 meV accuracy; for some transition metal oxides, 4000+ bands are needed. `Epsilon` and `Sigma` can be sped up enormously if you compress the `WFN` file with Stochastic Pseudobands, included with BerkeleyGW.
+* * **k-grid size**: There is generally a coarse k-grid used in `Epsilon`, `Sigma`, and `Kernel`, and a fine grid used only in `Absorption`.
+
 
 
 ## Tips for advanced users:
+#### General optimizations for (much) faster calculations:
 * Convert the `WFN`/`WFNq` files to the HDF5 format with `wfn2hdf.x BIN WFN WFN.h5`, then add the `use_wfn_hdf5` flags to `epsilon.inp`,`sigma.inp`, etc. This allows for faster I/O.
 * Use [Parabands with Stochastic Pseudobands](http://manual.berkeleygw.org/4.0/parabands-overview/), a module inside BerkeleyGW to effectively compress hundreds of unoccupied bands in `WFN.h5` by a factor of >50. This is a new and exciting feature in BerkeleyGW that can speed up `epsilon`/`sigma` calculations by 10x-1000x. (There are two ways to use pseudobands: the first is to perform a QE calculation on the occupied bands + at least one unoccupied band, then use the Parabands Fortran module with the input files above. This is generally faster than QE but is not compatible with DFT+U or hybrid functionals. For those cases, you can calculate all desired band with QE and use `pseudobands.py` to compress the QE wavefunctions; this works in all cases).
 * Consider doing full-frequency `Epsilon` calculations using the flags for the [Static Subspace Approximation](http://manual.berkeleygw.org/4.0/epsilon-keywords/#static-subspace-approximation), which allows for the full range of frequencies to be computed at little added cost to the zero-frequency dielectric matrix.
 * Use the GPU-accelerated version of the BerkeleyGW code when possible. Architectures vary, but at NERSC Perlmutter it is consistently 5x faster on $N$ GPU-enabled nodes than $N$ CPU-enabled nodes. The ELPA solver if compiled can also accelerate Parabands and Absorption significantly.
+#### Other tricks, analyses
 * A good way to check the quality of the DFT wavefunctions (and therefore to check if self-consistent GW updates are necessary) is to calculate off-diagonal elements of the self-energy operator using the `sigma_matrix` flag in `Sigma`. You must also use the flags `vxc_offdiag_min` and `vxc_offdiag_max` in `pw2bgw.x`. You can construct and diagonalize the matrix $E_{nk}\delta_{mn} - V_{xc, mnk} + \Sigma_{mnk}$ to find out how much the DFT wavefunctions are mixed by the self-energy operator.
-
+* The k-grid used in `Sigma` does not have to be identical to the q-grid used in `Epsilon`; it only needs to be commensurate. Therefore, one can use a 3x3x3 q-grid in `Epsilon` (possibly with NNS) and a 6x6x6 k-grid in `Sigma`. This will sacrifice a little bit of accuracy for computational time, but still converge QP energies carefully throughout the BZ (perhaps if you have a metallic system or many band crossings, or if QP shifts are very non-uniform throughout the BZ).
 
 
 
