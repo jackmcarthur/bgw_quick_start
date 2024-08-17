@@ -39,8 +39,15 @@ All calculations in BerkeleyGW must begin with mean-field calculations in one of
   ```
   4. Use these grids in the `bands` calculations used for `WFN` and `WFNq`.
 *  See tutorials, but note that semiconductors and insulators can generally be calculated with somewhat coarse k-grids. Metals however require very fine k-grid sampling to resolve the Fermi surface. `Epsilon` and `Sigma` are also compatible with occupation smearing, though note the treatment is somewhat simple (occupations < 0.95 are considered unoccupied).
-*  Once both kgrids for `WFN` and `WFNq` have been generated, do the following to generate the q-points in `epsilon.inp`:
+
+
+<details>
+<summary><b>How do I set up the k/q-grids in `epsilon.inp`/`sigma.inp`?</b> (click for dropdown)</summary>
+<br>
+Once both kgrids for `WFN` and `WFNq` have been generated, do the following to generate the q-points in `epsilon.inp`:
+  
   1. Copy/paste the kgrid from the WFN `pw.x` input file exactly: (q-grid has the same symmetry as the k-grid)
+  
 ```
 # contents of epsilon.inp:
 (other flags go here)
@@ -131,6 +138,10 @@ This will create a grid shifted by **four thousandths of the x-distance between 
 In `epsilon.inp`, the k-points are provided in crystal coordinates, so you would put `0.001000000  0.000000000  0.000000000  1.0 1` as the first k-point.
 
 (random shift for absorption with kshift goes here...)
+<br>
+</details>
+
+
 
 
 ### Considerations for certain systems:
