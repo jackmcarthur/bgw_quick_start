@@ -35,7 +35,7 @@ Essential settings in mean field input files:
   3. Generate a 6x6x6 k-grid shifted along $b_1$ (for `WFNq`) via:
   ```python
   python data-file2kgrid.py --kgrid 6 6 6 --kshift 0.001 0.0 0.0 data-file-schema.xml kgridq.inp
-  kgrid.x kgridq.inp kgrid.out kgrid.log
+  kgrid.x kgridq.inp kgridq.out kgridq.log
   ```
   4. Use these grids in the `bands` calculations used for `WFN` and `WFNq`.
 *  See tutorials, but note that semiconductors and insulators can generally be calculated with somewhat coarse k-grids. Metals however require very fine k-grid sampling to resolve the Fermi surface. `Epsilon` and `Sigma` are compatible with 
