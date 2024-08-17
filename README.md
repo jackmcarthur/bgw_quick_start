@@ -38,7 +38,8 @@ All calculations in BerkeleyGW must begin with mean-field calculations in one of
   kgrid.x kgridq.inp kgridq.out kgridq.log
   ```
   4. Use these grids in the `bands` calculations used for `WFN` and `WFNq`.
-*  See tutorials, but note that semiconductors and insulators can generally be calculated with somewhat coarse k-grids. Metals however require very fine k-grid sampling to resolve the Fermi surface. `Epsilon` and `Sigma` are compatible with
+*  See tutorials, but note that semiconductors and insulators can generally be calculated with somewhat coarse k-grids. Metals however require very fine k-grid sampling to resolve the Fermi surface. `Epsilon` and `Sigma` are also compatible with occupation smearing, though note the treatment is somewhat simple (occupations < 0.95 are considered unoccupied).
+*  TODO: pw2bgw kgrid info
 
 ### Considerations for certain systems:
 
