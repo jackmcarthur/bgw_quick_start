@@ -27,13 +27,13 @@ Essential settings in mean field input files:
   1. Run an SCF calculation with an 'automatic' grid.
 
   2. Generate a gamma-centered 6x6x6 k-grid (for `WFN`) via:
-  ```python
+  ```bash
   python data-file2kgrid.py --kgrid 6 6 6 data-file-schema.xml kgrid.inp
   kgrid.x kgrid.inp kgrid.out kgrid.log
   ```
 
   3. Generate a 6x6x6 k-grid shifted along $b_1$ (for `WFNq`) via:
-  ```python
+  ```bash
   python data-file2kgrid.py --kgrid 6 6 6 --kshift 0.001 0.0 0.0 data-file-schema.xml kgridq.inp
   kgrid.x kgridq.inp kgridq.out kgridq.log
   ```
