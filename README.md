@@ -12,7 +12,7 @@ There are two classes of parameters that aspiring BerkeleyGW users need to vary 
 
 All calculations in BerkeleyGW must begin with mean-field calculations in one of our [supported DFT codes](http://manual.berkeleygw.org/4.0/meanfield/), followed by conversion to one of the BerkeleyGW wavefunction formats, `WFN` (a Fortran binary) or `WFN.h5` (an HDF5 file, which maximizes I/O performance), along with other supplementary files (`RHO`...). BerkeleyGW supports a wide variety of material-specific features found in modern DFT codes, including spin-polarized and non-collinear spinor wavefunctions, meta-GGA and hybrid functionals, and DFT+U.
 
-Essential settings in mean field input files:
+### Essential settings in mean field input files:
 
 #### Pseudopotentials
 
@@ -40,6 +40,8 @@ Essential settings in mean field input files:
   4. Use these grids in the `bands` calculations used for `WFN` and `WFNq`.
 *  See tutorials, but note that semiconductors and insulators can generally be calculated with somewhat coarse k-grids. Metals however require very fine k-grid sampling to resolve the Fermi surface. `Epsilon` and `Sigma` are compatible with
 
+### Considerations for certain systems:
+
 #### Magnetism and spin orbit coupling
 * BerkeleyGW is compatible with spin-polarized and non-collinear spinor wavefunctions with no additional flags as long as the mean-field wrapper being used supports them, which is currently the case for `pw2bgw`. Simply include compatible flags and pseudopotentials in your mean field input. Be aware that the GW formalism as implemented assumes time-reversal symmetry, but in testing we have seen that the error caused by this assumption is very small.
 
@@ -59,13 +61,13 @@ Essential settings in mean field input files:
 #### Systems with implicit doping
 * The Fermi level in all input files can be set with `fermi_level [value in eV]`. Higher k-point sampling may be needed to resolve the Fermi surface in the presence of doping, and plasmon-pole approximations may be inadequate; full-frequency GW calculations may be necessary. Recent work by [Champagne et al.](https://pubs.acs.org/doi/10.1021/acs.nanolett.3c00386) may be helpful.
 
-
-
-#### DFT+U, Meta-GGA and hybrid functionals
-* BerkeleyGW can be used with Meta-GGA and hybrid functionals with certain settings fixed: check the [`pw2bgw.x` input documentation](http://manual.berkeleygw.org/4.0/pw2bgw-input/) for relevant flags.
+#### Systems with highly correlated electrons (transition metal oxides, etc.), Meta-GGA and hybrid functionals
+* For these systems, DFT+U and meta-GGA/hybrid functionals are often used to improve the quality of your mean-field wavefunctions. BerkeleyGW can be used with DFT+U and meta-GGA/hybrid functionals with certain inputs fixed: check the [`pw2bgw.x` input documentation](http://manual.berkeleygw.org/4.0/pw2bgw-input/) for relevant flags.
 * In particular, we recommend using the `kih.dat` file rather than `vxc.dat` with the flag `kih_file=.true.` Run `pw2bgw.x` in serial when writing `kih.dat`, and use `use_kih_dat / dont_use_vxcdat` in `sigma.inp`.
   * Why this difference? Note $E^{DFT}=K+I+H+V_{xc}(+ V_{hub})$ ($K$ = kinetic energy, $I$ = ionic potential energy, $H$ = Hartree energy, $V_{xc}$ = exchange-correlation energy, $V_{hub}$ = Hubbard U energy). Since $E^{GW} = K + I + H + \Sigma^{GW}$, we need to subtract off the $V_{xc}$ energy (and $V_{hub}$ if present) to obtain the correct QP energies in `Sigma`. Older versions of BerkeleyGW only accounted for $V_{xc}$, writing $\langle nk | V_{xc} | nk \rangle$ to `vxc.dat`. Now that newer functionals include exact exchange or Hubbard contributions, we are switching over to writing $K+I+H$ to `kih.dat`.
-  * Although we recommend using `kih.dat` for `Sigma`, the `pw2bgw.x` input documentation also shows an option to write $V_{hub}$ to the file `vhub.dat`, which may be useful for analysis. Be aware that if DFT+U+J+V is used, only the U energy is written to file. (+J+V is compatible with `kih.dat`.)
+  * Although we recommend using `kih.dat` for `Sigma`, the `pw2bgw.x` input documentation also shows an option to write $V_{hub}$ to the file `vhub.dat`, which may be useful for analysis. Be aware that if DFT+U+J+V is used, only the U energy is written to file. (+J+V is still compatible with `kih.dat`.)
+  * For transition metal oxides or other correlated d/f block systems, see the literature for convergence parameters of systems similar to your own. Large screened cutoffs of 30-40 Ry are necessary for the `Epsilon` and `Sigma` codes. For the kernel calculation, a separate `Epsilon` calculation can be done with a cutoff of <~20 Ry to reduce costs, as the very-low-G-vector screening dominates. Thousands of bands are generally needed for convergence of QP energies, and as such Parabands with stochastic pseudobands is recommended.
+  * The default QP energy calculation in BerkeleyGW is a "single-shot" $G_0W_0$ calculation, where the dielectric function and QP energies are calculated for the provided DFT wavefunctions. For correlated systems, $G_0W_0$ can be inadequate to capture the quasiparticle band gap if the DFT wavefunctions are far from the physical ones. Self-consistent updates of the QP wavefunctions and energies ('self consistent GW') may improve the quality of the QP bandstructure; the tool `Sigma/scGWtool.py` can be used to update the wavefunctions for multiple self-consistent iterations of `Epsilon`/`Sigma`.
 
 #### Tips for advanced users:
 * Convert the `WFN`/`WFNq` files to the HDF5 format with `wfn2hdf.x BIN WFN WFN.h5`, then add the `use_wfn_hdf5` flags to `epsilon.inp`,`sigma.inp`, etc. This allows for faster I/O.
