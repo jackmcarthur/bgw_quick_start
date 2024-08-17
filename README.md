@@ -57,7 +57,17 @@ All calculations in BerkeleyGW must begin with mean-field calculations in one of
 * Molecules are somewhat special even among low dimensional systems. Use the `cell_box_truncation` flag for the Coulomb interaction, and there is no need for a `WFNq` file in the calculation, only the `WFN` file with k-point $k=(0,0,0)$.
 * Molecules often require many thousands of unoccupied bands to converge the GW quasiparticle energies. Parabands (with stochastic pseudobands) is extra-strongly recommended to accelerate the calculations in these cases.
 * QP energies of molecules are more likely to benefit from full-frequency GW calculations (`frequency_dependence 2`), and BSE calculations are also more likely to require non-Tamm Dancoff Approximation BSE calculations (`extended_kernel`). Consult the literature to make an informed choice.
-* Look at the benzene tutorial example to learn how to correct the DFT eigenvalues for the vacuum level. This involves the flag `avgpot [float]`. 
+* Look at the benzene tutorial example to learn how to correct the DFT eigenvalues for the vacuum level. This involves the flag `avgpot [float]`.
+
+#### Interfaces and systems adsorbed to a surface or screened by a solvent
+The GW approximation is often used to calculate the QP energy levels and absorption spectra of molecules or other materials adsorbed to a surface or slab. This is most often done to simulating the environmental screening in an experiment accurately or for studies relevant to catalysis. A naive method to do this is to explicitly incorporate several layers of the surface in your GW/BSE calculation (which can be expensive, and will overlay the bands of your system of interest with those of the substrate). BerkeleyGW 4.0 has some new features that allow one to calculate the polarizability of a surface via an `Epsilon` calculation and add this to the screening of your molecule/system of interest via the `read_chi_add` flag. See documentation for `Epsilon`, as well as features in JDFTx that allow for a fluid polarizability to be used. This will give the molecular QP energy levels in the presence of the environmental screening, though it will neglect wavefunction hybridization between substrate and absorbant.
+
+#### Metallic and semimetallic systems
+* By default, BerkeleyGW assumes that systems have a band gap. For metallic systems, specify `screening_metal` in `Sigma`, `Kernel,` and `Absorption` to treat the q->0 limit of the dielectric function correctly.
+* ** need to check with other developers: Kernel and Absorption have the `screening_metal` flag in the documentation, but BSE calculations on metals are said not to be supported.
+* Be aware that metals/semimetals require much denser k-grids than semiconductors/insulators to converge the Fermi surface. See the literature; a 16x16x16 k-grid is a typical starting point for some simple metals.
+* `Inteqp` may not work for metals, making it difficult to obtain a plottable bandstructure. You can try the flag `unrestricted_transformation` for a possible workaround, manually sample points from the `eqp1.dat` grid, or use Wannier90 instead to interpolate the bandstructure; see the [sig2wan utility](http://manual.berkeleygw.org/4.0/sig2wan-input/).
+* BerkeleyGW 4.0 allows for occupation smearing in metals to be used in the `Epsilon` and `Sigma` calculations. Setting `wfng_occupation = .true.' in `pw2bgw.inp` is recommended to write the smeared occupations used by QE to the `WFN` file, then no other flags are needed in `Epsilon` and `Sigma`. You can also have BerkeleyGW recalculate its own broadening and/or modify the Fermi level by setting `occ_broadening` and `fermi_level_absolute`; see `Epsilon` documentation.
 
 #### Systems with implicit doping
 * The Fermi level in all input files can be set with `fermi_level [value in eV]`. Higher k-point sampling may be needed to resolve the Fermi surface in the presence of doping, and plasmon-pole approximations may be inadequate; full-frequency GW calculations may be necessary. Recent work by [Champagne et al.](https://pubs.acs.org/doi/10.1021/acs.nanolett.3c00386) may be helpful.
@@ -91,11 +101,11 @@ All calculations in BerkeleyGW must begin with mean-field calculations in one of
 * Exciton binding energies generally converge slowly and non-monotonically with the fine-k-grid size in `WFN_fi`, and the more localized an exciton in k-space, the denser the k-grid must be for convergence. This is especially challenging in certain low-dimensional systems like TMDs, where the excitons are tightly localized to the K and K' valleys. Patched sampling may be useful in these cases.
 
 ## Convergence parameters for all systems
-* *These parameters all vary by system, and convergence should always be tested for novel systems.*
-* There is both new and old literature benchmarking GW convergence parameters for different systems; [this recent work](https://www.nature.com/articles/s41524-024-01311-9) converges the parameters below for many bulk semiconductors, and [this work](https://pubs.acs.org/doi/full/10.1021/acs.jctc.5b00453) does the same for the "GW100" set of molecules.
+*These parameters all vary by system, and convergence should always be tested for novel systems.*
+There is both new and old literature benchmarking GW convergence parameters for different systems; [this recent work](https://www.nature.com/articles/s41524-024-01311-9) converges the parameters below for many bulk semiconductors, and [this work](https://pubs.acs.org/doi/full/10.1021/acs.jctc.5b00453) does the same for the "GW100" set of molecules.
 * **Screened Coulomb (G-vector) cutoff for the dielectric matrix/self-energy calculation**: Typical values for ~50 meV accuracy for simple sp semiconductors (without semicore states) are 15-20 Ry. For systems with semicore electrons or d/f electrons, the converged value can be as high as 40-50 Ry.
 * **Number of unoccupied bands in the dielectric matrix summation/Coulomb-hole summation**: This scales as the number of atoms in your unit cell, making it hard to give ballpark values, but it is generally larger when atoms with semicore electrons or d/f electrons are present. For silicon (2 atoms in unit cell), 600 bands are necessary for ~50 meV accuracy; for some transition metal oxides, 4000+ bands are needed. `Epsilon` and `Sigma` can be sped up enormously if you compress the `WFN` file with Stochastic Pseudobands, included with BerkeleyGW.
-* * **k-grid size**: There is generally a coarse k-grid used in `Epsilon`, `Sigma`, and `Kernel`, and a fine grid used only in `Absorption`.
+* * **k-grid size**: There is generally a coarse k-grid used in `Epsilon`, `Sigma`, and `Kernel`, and a fine grid used only in `Absorption`. The coarse grid 
 
 
 
