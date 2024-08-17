@@ -27,19 +27,111 @@ All calculations in BerkeleyGW must begin with mean-field calculations in one of
   1. Run an SCF calculation with an 'automatic' grid.
 
   2. Generate a gamma-centered 6x6x6 k-grid (for `WFN`) via:
-  ```bash
+  ```sh
   python data-file2kgrid.py --kgrid 6 6 6 data-file-schema.xml kgrid.inp
   kgrid.x kgrid.inp kgrid.out kgrid.log
   ```
 
   3. Generate a 6x6x6 k-grid shifted along $b_1$ (for `WFNq`) via:
-  ```bash
-  python data-file2kgrid.py --kgrid 6 6 6 --kshift 0.001 0.0 0.0 data-file-schema.xml kgridq.inp
+  ```sh
+  python data-file2kgrid.py --kgrid 6 6 6 --qshift 0.001 0.0 0.0 data-file-schema.xml kgridq.inp
   kgrid.x kgridq.inp kgridq.out kgridq.log
   ```
   4. Use these grids in the `bands` calculations used for `WFN` and `WFNq`.
 *  See tutorials, but note that semiconductors and insulators can generally be calculated with somewhat coarse k-grids. Metals however require very fine k-grid sampling to resolve the Fermi surface. `Epsilon` and `Sigma` are also compatible with occupation smearing, though note the treatment is somewhat simple (occupations < 0.95 are considered unoccupied).
+*  Once both kgrids for `WFN` and `WFNq` have been generated, do the following to generate the q-points in `epsilon.inp`:
+  1. Copy/paste the kgrid from the WFN `pw.x` input file exactly: (q-grid has the same symmetry as the k-grid)
+```
+# contents of epsilon.inp:
+(other flags go here)
+
+begin qpoints
+  0.000000000  0.000000000  0.000000000  1.0
+  0.000000000  0.000000000  0.250000000  3.0
+  0.000000000  0.000000000  0.500000000  6.0
+  (etc.)
+end qpoints
+```
+  2. Change all QE k-point weights (the fourth column) to 1.0, and add a fifth column of all 0's:
+```
+# contents of epsilon.inp:
+(other flags go here)
+
+begin qpoints
+  0.000000000  0.000000000  0.000000000  1.0 0
+  0.000000000  0.000000000  0.250000000  1.0 0
+  0.000000000  0.000000000  0.500000000  1.0 0
+  (etc.)
+end qpoints
+```
+  3. Change the $\Gamma$ k-point to the shifted k-point (in crystal coordinates) in the `WFNq` `pw.x` input file, and change the last column to 1 (indicating to read `WFNq`):
+```
+# contents of epsilon.inp:
+(other flags go here)
+
+begin qpoints
+  0.001000000  0.000000000  0.000000000  1.0 1
+  0.000000000  0.000000000  0.250000000  1.0 0
+  0.000000000  0.000000000  0.500000000  1.0 0
+  (etc.)
+end
+```
+  4. The k-grid in `sigma.inp` consists of the same list of points; copy-paste only the first four columns and change the shifted point back to $(0.0, 0.0, 0.0)$. (Remember to change `begin qpoints` to `begin kpoints`).
+```
+# contents of sigma.inp:
+(other flags go here)
+
+begin kpoints
+  0.000000000  0.000000000  0.000000000  1.0
+  0.000000000  0.000000000  0.250000000  1.0
+  0.000000000  0.000000000  0.500000000  1.0
+  (etc.)
+end
+```
+
 *  TODO: pw2bgw kgrid info
+
+A common source of confusion is the convention for shifted k/q-points in `kgrid.inp`, QE input files, `pw2bgw.inp`, `epsilon.inp`, and `sigma.inp`. Consider a system with a 4x4x4 kgrid and a `WFNq` shift along $b_1$.
+
+**Setting the shift in kgrid.x**
+
+In `kgrid.inp` (or `data-file2kgrid.py`), define the shift vector using the q-shift option. The shift will be in **crystal coordinates**. As an example:
+<pre>
+  # calling data-file2kgrid.py:
+  python data-file2kgrid.py --kgrid 6 6 6 <b>--qshift 0.001 0.0 0.0</b> data-file-schema.xml kgridq.inp
+  kgrid.x kgridq.inp kgridq.out kgridq.log
+
+  # ----- alternatively at top of kgridq.inp directly: -------
+  4   4   4             ! numbers of k-points along b1,b2,b3
+  0.0 0.0 0.0           ! "offset": units of k-grid steps
+  <b>0.0 0.0 0.001</b>         ! "q-shift": units of crystal coordinates
+  (rest of kgridq.inp goes here)
+</pre>
+The output will be:
+```
+K_POINTS crystal
+  (number of symmetry-reduced k-points)
+  0.001000000  0.000000000  0.000000000  1.0
+  0.001000000  0.000000000  0.250000000  1.0
+  0.001000000  0.000000000  0.500000000  1.0
+  (etc.)
+```
+In `pw2bgw.inp`, the grid shift defined by `dk1` should be defined in **units of the distance between k-points**, so you would put:
+```
+(...)
+nk1 = 4
+nk2 = 4
+nk3 = 4
+dk1 = 0.004
+dk2 = 0.0
+dk3 = 0.0
+(...)
+```
+This will create a grid shifted by **four thousandths of the x-distance between two k-points in a 4x4x4 grid, or one thousandth of $b_1$**.
+In `epsilon.inp`, the k-points are provided in crystal coordinates, so you would put `0.001000000  0.000000000  0.000000000  1.0 1` as the first k-point.
+
+(random shift for absorption with kshift goes here...)
+
 
 ### Considerations for certain systems:
 
@@ -66,9 +158,10 @@ The GW approximation is often used to calculate the QP energy levels and absorpt
 * By default, BerkeleyGW assumes that systems have a band gap. For metallic systems, specify `screening_metal` in `Sigma`, `Kernel,` and `Absorption` to treat the q->0 limit of the dielectric function correctly.
 * ** need to check with other developers: Kernel and Absorption have the `screening_metal` flag in the documentation, but BSE calculations on metals are said not to be supported.
 * Be aware that metals/semimetals require much denser k-grids than semiconductors/insulators to converge the Fermi surface. See the literature; a 16x16x16 k-grid is a typical starting point for some simple metals.
-* `Inteqp` may not work for metals, making it difficult to obtain a plottable bandstructure. You can try the flag `unrestricted_transformation` for a possible workaround, manually sample points from the `eqp1.dat` grid, or use Wannier90 instead to interpolate the bandstructure; see the [sig2wan utility](http://manual.berkeleygw.org/4.0/sig2wan-input/).
+* `Inteqp` may not work for metals, making it difficult to obtain a plottable bandstructure. You can try the flag `unrestricted_transformation` for a possible workaround, manually sample points from the `eqp1.dat` grid, or use Wannier90 instead to interpolate the bandstructure; see the [sig2wan utility](http://manual.berkeleygw.org/4.0/sig2wan-input/) and [a provided example](https://github.com/BerkeleyGW/BerkeleyGW-examples/tree/master/DFT/silicon).
 * BerkeleyGW 4.0 allows for occupation smearing in metals to be used in the `Epsilon` and `Sigma` calculations. Setting `wfng_occupation = .true.` in `pw2bgw.inp` is recommended to write the smeared occupations used by QE to the `WFN` file, then no other flags are needed in `Epsilon` and `Sigma`. You can also have BerkeleyGW recalculate its own broadening and/or modify the Fermi level by setting `occ_broadening` and `fermi_level_absolute`; see `Epsilon` documentation.
 * The dielectric function in metals may differ significantly from those predicted in plasmon-pole approximations. Full-frequency calculations are recommended; they are rigorously correct in these cases.
+* Although dense k-grids and full-frequency calculations have a large additional cost, this is slightly offset since QP energies in metals converge with fewer bands in `Epsilon`/`Sigma`, often 300-500 for small systems. This is because the screening is dominated by a small number of mostly intraband transitions.
 
 #### Systems with implicit doping
 * The Fermi level in all input files can be set with `fermi_level [value in eV]`. Higher k-point sampling may be needed to resolve the Fermi surface in the presence of doping, and plasmon-pole approximations may be inadequate; full-frequency GW calculations may be necessary. Recent work by [Champagne et al.](https://pubs.acs.org/doi/10.1021/acs.nanolett.3c00386) may be helpful.
@@ -90,16 +183,17 @@ The GW approximation is often used to calculate the QP energy levels and absorpt
     * There are many techniques used to do self-consistent GW, consult the literature for more information. The default option with `scGWtool.py` is to perform "$QSGW_0$" calculations (repeat `Sigma` with updated wavefunctions/eigenvalues while leaving the dielectric matrix fixed from DFT). Fully self-consistent "QSGW" (repeating both `Epsilon` and `Sigma`) is also possible, but note that the charge density `RHO` and `WFNq` files are not updated with the wavefunctions; unless treated manually, use of these DFT files is another approximation.
 
 ## Epsilon
-* There are three possible values for the `frequency_dependence` flag. The default is to calculate only the zero-frequency dielectric matrix. This is used in the Hybertsen-Louie Generalized Plasmon Pole Model (GPP), which offers ~0.1-0.2 eV accuracy of the QP energies near the Fermi energy at low cost. Another option is to compute the two frequencies used by the Godby-Needs Plasmon Pole Model, which is known to perform better in certain systems with localized electrons, see [[1]](https://journals.aps.org/prb/pdf/10.1103/PhysRevB.88.125205) and other literature. Full frequency calculations calculate the dielectric matrix across the whole frequency range, increasing accuracy and giving access to spectral functions and lifetimes. It is also more accurate further from the Fermi energy and in systems with localized d/f electrons, though it has a much greater cost. 
+* There are three possible values for the `frequency_dependence` flag. The default is to calculate only the zero-frequency dielectric matrix. This is used in the Hybertsen-Louie Generalized Plasmon Pole Model (GPP), which offers ~0.1-0.2 eV accuracy of the QP energies near the Fermi energy at low cost. Another option is to compute the two frequencies used by the Godby-Needs Plasmon Pole Model, which is known to perform better in certain systems with localized electrons, see [[1]](https://journals.aps.org/prb/pdf/10.1103/PhysRevB.88.125205) and other literature. Full frequency calculations calculate the dielectric matrix across the whole frequency range, increasing accuracy and giving access to spectral functions and lifetimes. It is also more accurate further from the Fermi energy and in systems with localized d/f electrons, though it has a much greater cost.
+* If an `Epsilon` calculation is killed by a time limit or a crash before finishing, it can be restarted from the last q-point calculated by adding the flag `restart` to `epsilon.inp`. This requires `WFN` and `WFNq` to be in the HDF5 format (convert with `wfn2hdf.x BIN WFN(q) WFN(q).h5` and add flag `use_wfn_hdf5` to `epsilon.inp`).
 
 ## Sigma
-* The (default) static remainder option in the code extrapolates trends from the finite sum-over-bands to the infinite sum limit. It is recommended in all cases.
-* 
+* The (default) static remainder option in the code extrapolates $\Sigma_{nk}$ from the finite sum-over-bands to the infinite sum limit. It is recommended in all cases.
+* There is no `restart` feature in `sigma.inp`, however, QP energies are written to `eqp1.dat` one k-point at a time. If the `Sigma` job requires multiple runs to finish, you can save `eqp1.dat` from each run and the delete the completed k-points from `sigma.inp` before the next run, then copy-paste each `eqp1.dat` into one final file at the end. (It may also be useful to save `sigma_hp.log` from each run and do the same if you want to analyze it and/or use self consistent GW.)
 
 ## Kernel
 
 ## Absorption
-* Exciton binding energies generally converge slowly and non-monotonically with the fine-k-grid size in `WFN_fi`, and the more localized an exciton in k-space, the denser the k-grid must be for convergence. This is especially challenging in certain low-dimensional systems like TMDs, where the excitons are tightly localized to the K and K' valleys. Patched sampling may be useful in these cases.
+* Exciton binding energies generally converge slowly and non-monotonically with the fine-k-grid size in `WFN_fi`, and the more localized an exciton in k-space, the denser the k-grid must be for convergence. This is especially challenging in certain low-dimensional systems like TMDs, where the excitons are tightly localized to the K and K' valleys. The patched sampling feature is useful in these cases.
 
 ## Convergence parameters for all systems
 *These parameters all vary by system, and convergence should always be tested for novel systems.*
