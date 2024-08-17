@@ -88,6 +88,7 @@ All calculations in BerkeleyGW must begin with mean-field calculations in one of
 ## Kernel
 
 ## Absorption
+* Exciton binding energies generally converge slowly and non-monotonically with the fine-k-grid size in `WFN_fi`, and the more localized an exciton in k-space, the denser the k-grid must be for convergence. This is especially challenging in certain low-dimensional systems like TMDs, where the excitons are tightly localized to the K and K' valleys. Patched sampling may be useful in these cases.
 
 ## Convergence parameters for all systems
 * There are five 
@@ -97,7 +98,7 @@ All calculations in BerkeleyGW must begin with mean-field calculations in one of
 * Convert the `WFN`/`WFNq` files to the HDF5 format with `wfn2hdf.x BIN WFN WFN.h5`, then add the `use_wfn_hdf5` flags to `epsilon.inp`,`sigma.inp`, etc. This allows for faster I/O.
 * Use [Parabands with Stochastic Pseudobands](http://manual.berkeleygw.org/4.0/parabands-overview/), a module inside BerkeleyGW to effectively compress hundreds of unoccupied bands in `WFN.h5` by a factor of >50. This is a new and exciting feature in BerkeleyGW that can speed up `epsilon`/`sigma` calculations by 10x-1000x. (There are two ways to use pseudobands: the first is to perform a QE calculation on the occupied bands + at least one unoccupied band, then use the Parabands Fortran module with the input files above. This is generally faster than QE but is not compatible with DFT+U or hybrid functionals. For those cases, you can calculate all desired band with QE and use `pseudobands.py` to compress the QE wavefunctions; this works in all cases).
 * Consider doing full-frequency `Epsilon` calculations using the flags for the [Static Subspace Approximation](http://manual.berkeleygw.org/4.0/epsilon-keywords/#static-subspace-approximation), which allows for the full range of frequencies to be computed at little added cost to the zero-frequency dielectric matrix.
-* Use the GPU-accelerated version of the BerkeleyGW code when possible. Architectures vary, but at NERSC Perlmutter it is consistently 5x faster on $N$ GPU-enabled nodes than $N$ CPU-enabled nodes.
+* Use the GPU-accelerated version of the BerkeleyGW code when possible. Architectures vary, but at NERSC Perlmutter it is consistently 5x faster on $N$ GPU-enabled nodes than $N$ CPU-enabled nodes. The ELPA solver if compiled can also accelerate Parabands and Absorption significantly.
 * A good way to check the quality of the DFT wavefunctions (and therefore to check if self-consistent GW updates are necessary) is to calculate off-diagonal elements of the self-energy operator using the `sigma_matrix` flag in `Sigma`. You must also use the flags `vxc_offdiag_min` and `vxc_offdiag_max` in `pw2bgw.x`. You can construct and diagonalize the matrix $E_{nk}\delta_{mn} - V_{xc, mnk} + \Sigma_{mnk}$ to find out how much the DFT wavefunctions are mixed by the self-energy operator.
 
 
