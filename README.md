@@ -175,7 +175,7 @@ The GW approximation is often used to calculate the QP energy levels and absorpt
 * Although dense k-grids and full-frequency calculations have a large additional cost, this is slightly offset since QP energies in metals converge with fewer bands in `Epsilon`/`Sigma`, often 300-500 for small systems. This is because the screening is dominated by a small number of mostly intraband transitions.
 
 #### Systems with implicit doping
-* The Fermi level in all input files can be set with `fermi_level [value in eV]`. Higher k-point sampling may be needed to resolve the Fermi surface in the presence of doping, and plasmon-pole approximations may be inadequate; full-frequency GW calculations may be necessary. Recent work by [Champagne et al.](https://pubs.acs.org/doi/10.1021/acs.nanolett.3c00386) may be helpful.
+* The Fermi level in all input files can be set with `fermi_level [value in eV]`. Denser k-point sampling is needed to resolve the Fermi surface in the presence of doping, and plasmon-pole approximations may be inadequate; full-frequency GW calculations may be necessary. Recent work by [Champagne et al.](https://pubs.acs.org/doi/10.1021/acs.nanolett.3c00386) may be helpful.
 
 #### DFT+U, meta-GGA and hybrid functionals
 * For correlated systems, DFT+U and meta-GGA/hybrid functionals are often used to improve the quality of your mean-field wavefunctions. BerkeleyGW can be used with DFT+U and meta-GGA/hybrid functionals with certain inputs fixed: check the [`pw2bgw.x` input documentation](http://manual.berkeleygw.org/4.0/pw2bgw-input/) for relevant flags.
@@ -199,19 +199,26 @@ The GW approximation is often used to calculate the QP energy levels and absorpt
 
 ## Sigma
 * The (default) static remainder option in the code extrapolates $\Sigma_{nk}$ from the finite sum-over-bands to the infinite sum limit. It is recommended in all cases.
-* There is no `restart` feature in `sigma.inp`, however, QP energies are written to `eqp1.dat` one k-point at a time. If the `Sigma` job requires multiple runs to finish, you can save `eqp1.dat` from each run and the delete the completed k-points from `sigma.inp` before the next run, then copy-paste each `eqp1.dat` into one final file at the end. (It may also be useful to save `sigma_hp.log` from each run and do the same if you want to analyze it and/or use self consistent GW.)
+* There is no `restart` feature in `sigma.inp`, however, QP energies are written to `eqp1.dat` one k-point at a time. If the `Sigma` job dies before finishing, you can save `eqp1.dat` from the first run, then do another run for only the incomplete k-points from `sigma.inp`, then copy-paste each `eqp1.dat` into one final file at the end. (It may also be useful to save `sigma_hp.log` from each run if you want to analyze it and/or use self consistent GW.)
 
 ## Kernel
 
 ## Absorption
-* Exciton binding energies generally converge slowly and non-monotonically with the fine-k-grid size in `WFN_fi`, and the more localized an exciton in k-space, the denser the k-grid must be for convergence. This is especially challenging in certain low-dimensional systems like TMDs, where the excitons are tightly localized to the K and K' valleys. The patched sampling feature is useful in these cases.
+* Exciton binding energies generally converge slowly and non-monotonically with the fine-k-grid size in `WFN_fi`, and the more localized an exciton in k-space, the denser the k-grid must be for convergence. This is especially challenging in certain (low-dimensional) systems like 2D TMDs, where the excitons are tightly localized to the K and K' valleys. The patched sampling feature is useful in these cases.
 
 ## Convergence parameters for all systems
-*These parameters all vary by system, and convergence should always be tested for novel systems.*
-There is both new and old literature benchmarking GW convergence parameters for different systems; [this recent work](https://www.nature.com/articles/s41524-024-01311-9) converges the parameters below for many bulk semiconductors, and [this work](https://pubs.acs.org/doi/full/10.1021/acs.jctc.5b00453) does the same for the "GW100" set of molecules.
+*These parameters all vary by system, and convergence should always be tested for novel systems. See the literature and the [tutorial worshop slides](https://workshop.berkeleygw.org/tutorial-workshop/about) for more guidance.*
+There is both new and old literature benchmarking GW convergence parameters for different systems; two examples are [this recent work](https://www.nature.com/articles/s41524-024-01311-9) which converges the parameters below for many bulk semiconductors, and [this work](https://pubs.acs.org/doi/full/10.1021/acs.jctc.5b00453) which does the same for the "GW100" set of molecules.
 * **Screened Coulomb (G-vector) cutoff for the dielectric matrix/self-energy calculation**: Typical values for ~50 meV accuracy for simple sp semiconductors (without semicore states) are 15-20 Ry. For systems with semicore electrons or d/f electrons, the converged value can be as high as 40-50 Ry.
-* **Number of unoccupied bands in the dielectric matrix summation/Coulomb-hole summation**: This scales as the number of atoms in your unit cell, making it hard to give ballpark values, but it is generally larger when atoms with semicore electrons or d/f electrons are present. For silicon (2 atoms in unit cell), 600 bands are necessary for ~50 meV accuracy; for some transition metal oxides, 4000+ bands are needed. `Epsilon` and `Sigma` can be sped up enormously if you compress the `WFN` file with Stochastic Pseudobands, included with BerkeleyGW.
-* * **k-grid size**: There is generally a coarse k-grid used in `Epsilon`, `Sigma`, and `Kernel`, and a fine grid used only in `Absorption`. The coarse grid 
+* **Number of unoccupied bands in the dielectric matrix summation/Coulomb-hole summation**: This scales as the number of atoms in your unit cell, making it hard to give ballpark values, but it is generally larger when atoms with semicore electrons or d/f electrons are present. For silicon (2 atoms in unit cell), 100 bands are necessary for ~50 meV accuracy. For transition metal oxides, 1000+ bands are needed with 3000+ in the most pathological cases. `Epsilon` and `Sigma` can be sped up enormously if you compress the unoccupied bands in the `WFN` file with Stochastic Pseudobands, included with BerkeleyGW.
+* **k-grid size**: Typical calculations involve one coarse k/q-grid used in `Epsilon`, `Sigma`, and `Kernel`, and a fine grid used only in `Absorption`. Both of these need to be converged w.r.t. density.
+  * It is hard to estimate the k-grid size that a GW calculation will need a priori, since it will depend on unit cell size (larger unit cell = less dense grid), system-dependent screening, and how strongly the $\Sigma$ operator varies in k-space.
+    * Coarse k-grid (GW bands, `Kernel`):
+      * QP energies of simple bulk (3D) semiconductors (Si, GaN...) often converge somewhere between 4x4x4 and 8x8x8.
+      * Simple metals may require 12x12x12 to 20x20x20+ to resolve the Fermi surface.
+      * 2D/1D materials may require very dense k-grids due to the complex screening behavior (see tutorial workshop and literature); the NNS method is recommended as it can allow for convergence around 12x12x1 k-grid sizes where 200x200x1+ would be necessary without.
+    * Fine k-grid (BSE solutions, `Absorption`)
+      * For accurate exciton binding energies, fine k-grids need to be dense enough to resolve the exciton wavefunction in reciprocal space. Very spread out, Wannier-type excitons are very localized in reciprocal space and require dense k-grids. Frenkel excitons are delocalized in reciprocal space and may converge with k-grids close to those above.
 
 
 
