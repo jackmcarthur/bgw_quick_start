@@ -148,9 +148,15 @@ In `epsilon.inp`, the k-points are provided in crystal coordinates, so you would
 
 #### Magnetism and spin orbit coupling
 * BerkeleyGW is compatible with spin-polarized and non-collinear spinor wavefunctions with no additional flags as long as the mean-field wrapper being used supports them, which is currently the case for `pw2bgw`. Simply include compatible flags and pseudopotentials in your mean field input. Be aware that the GW formalism as implemented assumes time-reversal symmetry, but in testing we have seen that the error caused by this assumption is very small.
+* For spin-polarized calculations (those using scalar relativistic pseudopotentials and `nspin = 2` in Quantum ESPRESSO, *not* spinor calculations, `nspin=4`), you will need to set:
+```
+spin_index_min 1
+spin_index_max 2
+```
+in `sigma.inp` to generate QP corrections for both spins, as the default is the first spin only.
 
 #### 2D and 1D materials
-* Review the [tutorial workshop's presentations](https://workshop.berkeleygw.org/tutorial-workshop/about) for information about convergence in low-dimensional systems. These calculations are harder to converge due to the behavior of the dielectric function in low dimensions.
+* Review the [tutorial workshop's presentations](https://workshop.berkeleygw.org/tutorial-workshop/about) for information about convergence in low-dimensional systems. These calculations are harder to converge due to the behavior of the dielectric function in low dimensions; the NNS and CSI methods are recommended to improve convergence.
 * Use the `surface.x` code to find the size of your unit cell necessary for convergence. Aperiodic cell dimensions should be twice those of the 99% charge density isosurface.
   * *Directly use the value in a.u. outputted by `surface.x`. It has already been doubled.*
 * In 2D systems, the z direction must be aperiodic. In 1D systems, the z direction must be periodic (x and y aperiodic).
@@ -158,7 +164,7 @@ In `epsilon.inp`, the k-points are provided in crystal coordinates, so you would
 
 #### Molecules/isolated systems
 * Molecules are somewhat special even among low dimensional systems. Use the `cell_box_truncation` flag for the Coulomb interaction, and there is no need for a `WFNq` file in the calculation, only the `WFN` file with k-point $k=(0,0,0)$.
-* Molecules often require many thousands of unoccupied bands to converge the GW quasiparticle energies. Parabands (with stochastic pseudobands) is extra-strongly recommended to accelerate the calculations in these cases.
+* Molecules often require thousands of unoccupied bands to converge the GW quasiparticle energies. Parabands (with stochastic pseudobands) is extra-strongly recommended to accelerate the calculations in these cases.
 * It is known that QP energies of molecules are more likely to benefit from full-frequency GW calculations (`frequency_dependence 2`), and absorption spectra are also more likely to benefit from non-Tamm Dancoff Approximation BSE calculations (`extended_kernel` in `kernel.inp` and `full_bse` in `absorption.inp`). Consult the literature to make an informed choice.
 * Look at the benzene tutorial example to learn how to correct the DFT eigenvalues for the vacuum level. This involves the flag `avgpot [float]`.
 
@@ -194,12 +200,13 @@ The GW approximation is often used to calculate the QP energy levels and absorpt
     * There are many techniques used to do self-consistent GW, consult the literature for more information. The default option with `scGWtool.py` is to perform "$QSGW_0$" calculations (repeat `Sigma` with updated wavefunctions/eigenvalues while leaving the dielectric matrix fixed from DFT). Fully self-consistent "QSGW" (repeating both `Epsilon` and `Sigma`) is also possible, but note that the charge density `RHO` and `WFNq` files are not updated with the wavefunctions; unless treated manually, use of these DFT files is another approximation.
 
 ## Epsilon
-* There are three possible values for the `frequency_dependence` flag. The default is to calculate only the zero-frequency dielectric matrix. This is used in the Hybertsen-Louie Generalized Plasmon Pole Model (GPP), which offers ~0.1-0.2 eV accuracy of the QP energies near the Fermi energy at low cost. Another option is to compute the two frequencies used by the Godby-Needs Plasmon Pole Model, which is known to perform better in certain systems with localized electrons, see [[1]](https://journals.aps.org/prb/pdf/10.1103/PhysRevB.88.125205) and other literature. Full frequency calculations calculate the dielectric matrix across the whole frequency range, increasing accuracy and giving access to spectral functions and lifetimes. It is also more accurate further from the Fermi energy and in systems with localized d/f electrons, though it has a much greater cost.
+* There are three possible values for the `frequency_dependence` flag. The default `0` is to calculate only the zero-frequency dielectric matrix. This is used in the Hybertsen-Louie Generalized Plasmon Pole Model (HL-GPP), which offers ~0.1-0.2 eV accuracy of the QP energies near the Fermi energy at low cost. Another option, `3`, is to compute the two frequencies used by the Godby-Needs Plasmon Pole Model, which is known to perform better in certain systems with localized electrons, see [[1]](https://journals.aps.org/prb/pdf/10.1103/PhysRevB.88.125205) and other literature. Full frequency calculations, `2`, calculate the dielectric matrix across the whole frequency range, increasing accuracy and giving access to spectral functions and lifetimes. It is also more accurate further from the Fermi energy and in systems with localized d/f electrons, though it has a much greater cost. However, the Static Subspace Approximation (SSA) (see `Epsilon` documentation) can allow for full-frequency calculations with only a small overhead compared to the HL-GPP.
 * If an `Epsilon` calculation is killed by a time limit or a crash before finishing, it can be restarted from the last q-point calculated by adding the flag `restart` to `epsilon.inp`. This requires `WFN` and `WFNq` to be in the HDF5 format (convert with `wfn2hdf.x BIN WFN(q) WFN(q).h5` and add flag `use_wfn_hdf5` to `epsilon.inp`).
 
 ## Sigma
 * The (default) static remainder option in the code extrapolates $\Sigma_{nk}$ from the finite sum-over-bands to the infinite sum limit. It is recommended in all cases.
-* There is no `restart` feature in `sigma.inp`, however, QP energies are written to `eqp1.dat` one k-point at a time. If the `Sigma` job dies before finishing, you can save `eqp1.dat` from the first run, then do another run for only the incomplete k-points from `sigma.inp`, then copy-paste each `eqp1.dat` into one final file at the end. (It may also be useful to save `sigma_hp.log` from each run if you want to analyze it and/or use self consistent GW.)
+* There is no `restart` feature in `sigma.inp`, however, QP energies are written to `eqp1.dat` one k-point at a time. If the `Sigma` job dies before finishing, you can save `eqp1.dat` from the first run, do another run for only the incomplete k-points from `sigma.inp`, and then copy-paste each `eqp1.dat` into one final file at the end. (It may also be useful to save `sigma_hp.log` from each run if you want to analyze it and/or use self consistent GW.)
+* If you use a different frequency dependence model in `Epsilon` than the HL-GPP (the default for both `Epsilon` and `Sigma`), set the value of `frequency_dependence` in `Sigma` as well.
 
 ## Kernel
 
