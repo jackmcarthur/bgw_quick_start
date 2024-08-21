@@ -229,6 +229,8 @@ There is both new and old literature benchmarking GW convergence parameters for 
       * 2D/1D materials may require very dense k-grids due to the complex screening behavior (see tutorial workshop and literature); the NNS method is recommended as it can allow for convergence around 12x12x1 k-grid sizes where 200x200x1+ would be necessary without.
     * Fine k-grid (BSE solutions, `Absorption`)
       * For accurate exciton binding energies, fine k-grids need to be dense enough to resolve the exciton wavefunction in reciprocal space. Very spread out, Wannier-type excitons are very localized in reciprocal space and require dense k-grids. Frenkel excitons are delocalized in reciprocal space and may converge with k-grids close to those above.
+      * To improve convergence, we strongly recommend using a *shifted* fine k-grid (random shift in each direction so that the grid center is not the $\Gamma$ point). We do this because a $\Gamma$ centered grid will generally sample many k-points related by symmetry, which can cause spikes in the density of states.
+        * Shifted k-grids can be generated using the `k-shift` line in `kgrid.inp`, which is `--kshift 0.35 0.12 0.62` (with three random values between zero and one) for `data-file2kgrid.py`.
 
 
 
