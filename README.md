@@ -141,7 +141,9 @@ In `epsilon.inp`, the k-points are provided in crystal coordinates, so you would
 <br>
 </details>
 
-
+#### Real vs. Cplx versions of the code
+* The main BGW executables (`Epsilon`, `Sigma`, `Inteqp`, `Kernel`, `Absorption`, `Plotxct`) can all be called as either `epsilon.real.x` or `epsilon.cplx.x`. The `real` version of the code can only be used for spin-unpolarized calculations with inversion symmetry about the origin and time reversal symmetry. `cplx` is used for all other cases, including all cases with spinor wavefunctions. The `cplx` version requires more memory and computational time.
+  * In `pw2bgw.inp`, use the flag `real_or_complex = 1` for `real`, and `real_or_complex = 2` for `cplx`.
 
 
 ### Considerations for certain systems:
