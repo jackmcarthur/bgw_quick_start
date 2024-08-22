@@ -214,9 +214,11 @@ The GW approximation is often used to calculate the QP energy levels and absorpt
 * If you use a different frequency dependence model in `Epsilon` than the HL-GPP (the default for both `Epsilon` and `Sigma`), set the value of `frequency_dependence` in `Sigma` as well.
 
 ## Kernel
+* By default, the code calculates only matrix elements of the BSE kernel of the form $(v,c)\rightarrow(v',c')$; the use of only these matrix elements in `Absorption` when solving the BSE is known as the Tamm-Dancoff approximation. This approximation is very good for typical solid state systems, but is known to cause errors in some molecules and molecular crystals with strong exciton binding energies. The `extended_kernel` flag may be used to calculate the full (non-TDA) kernel, which includes all transitions $(m,n)\rightarrow(m',n')$ for $m$ and $n$ any conduction or valence band.
 
 ## Absorption
 * Exciton binding energies generally converge slowly and non-monotonically with the fine-k-grid size in `WFN_fi`, and the more localized an exciton in k-space, the denser the k-grid must be for convergence. This is especially challenging in certain (low-dimensional) systems like 2D TMDs, where the excitons are tightly localized to the K and K' valleys. The patched sampling feature is useful in these cases.
+* See `Kernel` section for notes on non-Tamm-Dancoff approximation calculations, which can be performed with the `full_bse` flag.
 * All `Absorption` calculations require either the flag `use_momentum` or `use_velocity`, which controls whether you need only one fine k-grid `WFN_fi` or an additional shifted fine k-grid `WFNq_fi`. What circumstances affect this?
   * `use_momentum` and `use_velocity` control how the dipole matrix elements are calculated in the code. These two flags exist because the oscillator strength of an exciton state $|S\rangle$ is proportional to the dipole matrix element $|\langle S|\hat{e}\bullet\mathbf{\vec{v}}|0 \rangle|^2$ for light polarization along $\hat{e}$, where $\vec{v}$ is the velocity operator. The true definition of the $\vec{v}$ operator is $[\vec{r},\hat{H}]$; this definition is used with `use_velocity`, and its evaluation requires the `WFNq_fi` file with a k-grid shifted along the direction of $\hat{e}$ relative to `WFN_fi`.
   * The above definition includes the non-local part of the pseudopotentials used, but when the Hamiltonian is fully local, $\vec{v}$ reduces to just $\vec{p}/m$. This simpler operator does not require `WFNq_fi`, just specify the polarization vector as `polarization 0.707 0.707 0` or whatever desired vector in Cartesian (TODO: check) x/y/z coordinates. This simply drops the non-local parts of the pseudopotentials, and will introduce error into the oscillator strengths if those parts are large.
@@ -229,15 +231,17 @@ There is both new and old literature benchmarking GW convergence parameters for 
 * **Number of unoccupied bands in the dielectric matrix summation/Coulomb-hole summation**: This scales as the number of atoms in your unit cell, making it hard to give ballpark values, but it is generally larger when atoms with semicore electrons or d/f electrons are present. For silicon (2 atoms in unit cell), 100 bands are necessary for ~50 meV accuracy. For simple transition metal oxides, 1000+ bands are needed with 3000+ in the most pathological cases. `Epsilon` and `Sigma` can be sped up enormously if you compress the unoccupied bands in the `WFN` file with Stochastic Pseudobands, included with BerkeleyGW.
 * **k-grid size**: Typical calculations involve one coarse k/q-grid used in `Epsilon`, `Sigma`, and `Kernel`, and a fine grid used only in `Absorption`. Both of these need to be converged w.r.t. density.
   * It is hard to estimate the k-grid size that a GW calculation will need a priori, since it will depend on unit cell size (larger unit cell = less dense grid), system-dependent screening, and how strongly the $\Sigma$ operator varies in k-space.
-    * Coarse k-grid (`Epsilon`, `Sigma`, `Kernel`):
-      * QP energies of simple bulk (3D) semiconductors (Si, GaN...) often converge somewhere between 4x4x4 and 8x8x8.
-      * Simple metals may require 12x12x12 to 20x20x20+ to resolve the Fermi surface.
-      * 2D/1D materials may require very dense k-grids due to the complex screening behavior (see tutorial workshop and literature); the NNS method is recommended as it can allow for convergence around 12x12x1 k-grid sizes where 200x200x1+ would be necessary without.
-    * Fine k-grid (`Absorption`)
-      * For accurate exciton binding energies, fine k-grids need to be dense enough to resolve the exciton wavefunction in reciprocal space. Very spread out, Wannier-type excitons are very localized in reciprocal space and require dense k-grids or even patched sampling. Frenkel excitons are delocalized in reciprocal space and may converge with k-grids close to those above.
-      * To improve convergence, we strongly recommend using a *shifted* fine k-grid (random shift in each direction so that the grid center is not the $\Gamma$ point). We do this because a $\Gamma$ centered grid will generally sample many k-points related by symmetry, which can cause spikes in the density of states.
-        * Shifted k-grids can be generated using the `k-shift` line in `kgrid.inp`, which is `--kshift 0.35 0.12 0.62` (with three random values between zero and one) for `data-file2kgrid.py`.
-
+  * Coarse k-grid (`Epsilon`, `Sigma`, `Kernel`):
+    * QP energies of simple bulk (3D) semiconductors (Si, GaN...) often converge somewhere between 4x4x4 and 8x8x8.
+    * Simple metals may require 12x12x12 to 20x20x20+ to resolve the Fermi surface.
+    * 2D/1D materials may require very dense k-grids due to the complex screening behavior (see tutorial workshop and literature); the NNS method is recommended as it can allow for convergence around 12x12x1 k-grid sizes where 200x200x1+ would be necessary without.
+  * Fine k-grid (`Absorption`)
+    * For accurate exciton binding energies, fine k-grids need to be dense enough to resolve the exciton wavefunction in reciprocal space. Very spread out, Wannier-type excitons are very localized in reciprocal space and require dense k-grids or even patched sampling. Frenkel excitons are delocalized in reciprocal space and may converge with k-grids close to those above.
+    * To improve convergence, we strongly recommend using a *shifted* fine k-grid (random shift in each direction so that the grid center is not the $\Gamma$ point). We do this because a $\Gamma$ centered grid will generally sample many k-points related by symmetry, which can cause spikes in the density of states.
+      * Shifted k-grids can be generated using the `k-shift` line in `kgrid.inp`, which is `--kshift 0.35 0.12 0.62` (with three random values between zero and one) for `data-file2kgrid.py`.
+* **Number of valence and conduction bands used to solve the BSE**
+  * Exciton binding energies converge as a function of how many bands are included in `number_val_bands_fine` and `number_cond_bands_fine` in `Absorption`; the same numbers of bands plus a few extra for interpolation should be used in `Kernel`.
+  * Generally, to converge the absorption spectrum up to a certain energy threshhold, say 4 eV, you should include all bands that fall in a 4 eV window centered at the Fermi energy plus a few more. Note that many more bands may be necessary for molecules.
 
 
 ## Tips for advanced users:
