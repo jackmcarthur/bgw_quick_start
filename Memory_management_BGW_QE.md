@@ -8,6 +8,19 @@ This guide will serve to give some intuition based on the computational scaling 
 
 The PWscf package distributed with Quantum ESPRESSO is a highly capable CPU+GPU+MPI+OpenMP enabled code known widely for its many levels of parallelization. The BerkeleyGW development team does not actively maintain QE and cannot always answer questions, but here we attempt to help users avoid a few common problems in the QE->BGW workflow that stem from asking PWscf to calculate something it is not always optimized for--calculating hundreds or thousands of empty bands. The `pw.x` documentation of its parallelization levels is found [here](https://www.quantum-espresso.org/Doc/user_guide/node20.html), and here is [a summer school presentation](https://indico.ictp.it/event/9616/session/53/contribution/89/material/slides/0.pdf) which gives a lot of background about the memory and communication loads of the main parallelization levels.
 
+First: running out of memory in QE:
+```
+typical segfault or OOM kill
+```
+Using too many MPI tasks/poor parallelization strategy:
+```
+MPICH ERROR [Rank 1] [job id 29698631.0] [Fri Aug 23 13:52:04 2024] [nid006232] - Abort(604933) (rank 1 in comm 0): Fatal error in PMPI_Comm_free: Invalid communicator, error stack:
+PMPI_Comm_free(139): MPI_Comm_free(comm=0x7ffc43a888a0) failed
+PMPI_Comm_free(86).: Null communicator
+```
+
+Most QE->BGW calculations are on systems with O(10-100) symmetry reduced k-points and O(100-5000) bands. Parallelization over k-points is trivial in QE, but the diagonalization of H at a single k-point is often slow and may only scale up to 10-50 MPI tasks before saturating. In order to minimize wall time without exceeding available memory, one must optimize an MPI/OpenMP parallelization strategy over plane waves, task groups, subspace diagonalization groups, and OpenMP threads.
+
 WIP:
 
 `pw.x` for QE->BGW users has four parallelization flags that can group MPI tasks, as well as PW parallelization and OpenMP threads.
@@ -15,7 +28,7 @@ WIP:
   * Maximum value: number of irreducible k-points
   * Maximum processers per pool: no limit
 * `-nband`: number of pools for KS orbitals
-  * N
+  * Can accelerate calculations somewhat, but does not reduce memory.
 * PW parallelization: not a flag, default parallelization for any levels not specified
   * Maximum value: often 8-16
 * `-ntg`: number of task groups for FFTs
@@ -25,7 +38,6 @@ WIP:
 * OpenMP threads
   * Maximum value: 4-8 per processor
 
-Of these, `-npools` is a trivial parallelization level, `-nband` can greatly reduce memory requirements 
 
 ### QE 7.x, GPU version
 We recommend using the GPU version of QE when possible, as GPU offloading provides a significant speedup to all `pw.x` runs and circumvents memory bottlenecks associated with typical QE->BGW calculations.
