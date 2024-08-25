@@ -1,27 +1,32 @@
 # Managing memory in BerkeleyGW (and QuantumESPRESSO)
 
+
+This page is a mess and will be revamped in the future.
+
 GW+BSE calculations are very memory intensive, even by the standards of modern high performance computers. We try to provide accurate memory estimates at the start of each calculation along with warnings if they will exceed available memory, but it is difficult to predict all edge cases resulting from different parallelization schemes, architectures, GPU/CPU functionality, and available libraries. As such, new users may encounter out-of-memory kills or other memory errors in the main BGW executables. Most of the time, these can be resolved by increasing the total amount of memory available (i.e. the number of nodes) and/or revising the parallelization scheme; other times, there are input flags that help minimize the needed memory.
 
 This guide will serve to give some intuition based on the computational scaling of each executable with the GW convergence parameters, as well as additional tips for reducing memory requirements.
 
 ## Quantum ESPRESSO parallelization advice
 
-The PWscf package distributed with Quantum ESPRESSO is a CPU+GPU+MPI+OpenMP enabled code with an elaborate parallelization structure. The BerkeleyGW development team does not actively maintain QE and cannot always answer questions, but here we attempt to help users avoid a few common problems in the QE->BGW workflow that stem from asking PWscf to calculate something it is not always optimized for--calculating hundreds or thousands of empty bands. The `pw.x` documentation of its parallelization levels is found [here](https://www.quantum-espresso.org/Doc/user_guide/node20.html), and here are two powerpoint presentations: [a summer school presentation](https://indico.ictp.it/event/9616/session/53/contribution/89/material/slides/0.pdf) and (an HPC workshop presentation)[https://indico.ictp.it/event/a12226/session/133/contribution/81/material/0/0.pdf] which gives a lot of background about the memory and communication loads of the main parallelization levels.
+The PWscf package distributed with Quantum ESPRESSO has an elaborate parallelization structure. The BerkeleyGW development team does not actively maintain QE and cannot resolve many bugs, but here we attempt to help users avoid common problems that are common to calculations of BGW wavefunctions, as we commonly ask PWscf to calculate something it is not always optimized for--calculating hundreds or thousands of empty bands. The `pw.x` documentation of parallelization levels is found [here](https://www.quantum-espresso.org/Doc/user_guide/node20.html), and additional guidance is found in these two slide decks: [a summer school presentation](https://indico.ictp.it/event/9616/session/53/contribution/89/material/slides/0.pdf) and [an HPC workshop presentation](https://indico.ictp.it/event/a12226/session/133/contribution/81/material/0/0.pdf) which gives a lot of background about the memory and communication loads of the main parallelization levels.
 
-First: running out of memory in QE:
-```
-typical segfault or OOM kill
-```
-Can be fi
-Using too many MPI tasks/poor parallelization strategy:
-```
-MPICH ERROR [Rank 1] [job id 29698631.0] [Fri Aug 23 13:52:04 2024] [nid006232] - Abort(604933) (rank 1 in comm 0): Fatal error in PMPI_Comm_free: Invalid communicator, error stack:
-PMPI_Comm_free(139): MPI_Comm_free(comm=0x7ffc43a888a0) failed
-PMPI_Comm_free(86).: Null communicator
-```
-This can be due to QE attempting to use `-ndiag > 1` when ScaLAPACK is not enabled correctly; setting `-ndiag 1` explicitly in your `srun` command can resolve the error.
+Short explanation of QE default parallelization:
+* The core routine of `pw.x` is to iteratively diagonalize a Hamiltonian for a specific k-point to obtain DFT eigenfunctions and eigenvalues.
+* If a calculation comprises multiple k-points, `pw.x` splits up the processors into groups called a 'pool' that each work on one k-point at a time.
+* Within a pool, QE by default parallelizes calculations over G-vectors ('PW parallelization'). If there are more processors than G-vector slabs in the FFT grid, it may also parallelize over 'task groups' which 
 
+**Levels of parallelization in pw.x**
+See [here](https://www.quantum-espresso.org/Doc/user_guide/node20.html) to understand the different levels of parallelization in `pw.x`. Note that:
+* 
+The most useful for BGW starting point calculations are, in order:
+1. `-npools`: how many groups of processors calculat
+  * Maximum value: number of irreducible k-points ($N_k$)
+  * Optimal value: A divisor of both $N_k$ and $N_{nodes}$.
+2. 
 
+**Optimizing CPU efficiency**
+In short, 
 
 Most QE->BGW calculations are on systems with O(10-100) symmetry reduced k-points and O(100-5000) bands. Parallelization over k-points is trivial in QE, but the diagonalization of H at a single k-point is often slow and may only scale up to 10-50 MPI tasks before saturating. 
 
@@ -30,6 +35,7 @@ In order to minimize wall time without exceeding available memory, one must opti
 WIP:
 
 `pw.x` for QE->BGW users has four parallelization flags that can group MPI tasks, as well as PW parallelization and OpenMP threads.
+* `-nimage`:
 * `-npools`: number of pools of k-points
   * Maximum value: number of irreducible k-points ($N_k$)
   * Optimal values:
@@ -75,3 +81,20 @@ For a bog-standard QE->BGW coarse grid calculation (O(10-100) symmetry reduced k
 #### QE 7.x, CPU version
 
 By default, Q
+
+
+
+#### Common errors with QE
+
+First: running out of memory in QE:
+```
+typical segfault or OOM kill
+```
+Can be fi
+Using too many MPI tasks/poor parallelization strategy:
+```
+MPICH ERROR [Rank 1] [job id 29698631.0] [Fri Aug 23 13:52:04 2024] [nid006232] - Abort(604933) (rank 1 in comm 0): Fatal error in PMPI_Comm_free: Invalid communicator, error stack:
+PMPI_Comm_free(139): MPI_Comm_free(comm=0x7ffc43a888a0) failed
+PMPI_Comm_free(86).: Null communicator
+```
+This can be due to QE attempting to use `-ndiag > 1` when ScaLAPACK is not enabled correctly; setting `-ndiag 1` explicitly in your `srun` command can resolve the error.
