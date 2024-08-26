@@ -30,6 +30,7 @@ Header: performance comparison of tutorial style calculations and those with pse
 # Kernel
 ## Standard parallelization advice
 ## Memory requirements
+### Low memory option vs. high memory option
 
 # Absorption
 ## Standard parallelization advice
