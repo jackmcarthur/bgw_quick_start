@@ -1,0 +1,34 @@
+#!/bin/bash
+#SBATCH --qos=debug
+#SBATCH --nodes=4
+#SBATCH --ntasks-per-node=4
+#SBATCH --gpus-per-task=1
+#SBATCH --cpus-per-task=1
+#SBATCH --gpu-bind=map_gpu:0,1,2,3
+#SBATCH -C gpu
+#SBATCH -t 00:30:00
+#SBATCH -J GaSb
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=jackslurmjobs@gmail.com
+#SBATCH -A m2651
+
+export SLURM_CPU_BIND="cores"
+export OMP_PROC_BIND=spread
+export OMP_PLACES=threads
+export OMP_NUM_THREADS=1
+
+module load cpe/23.03
+module load espresso/7.0-libxc-5.2.2-gpu
+
+cd 1-scf
+#srun -n 4 -c 1 pw.x -input scf.in > scf.out
+
+cd ../2.1-wfn
+# npool: same as number of nodes (s.t. one k-point happens on one node at a time)
+# ndiag: 1, diagonalizations are done on one GPU rather than defaulting to ~4
+srun -N 4 -n 16 -c 1 pw.x -input bands.in > bands.out -npool 16 -ndiag 1
+srun -n 1 pw2bgw.x -input pw2bgw.in > pw2bgw.out
+
+cd ../2.2-wfnq
+#srun -N 4 -n 16 -c 1 pw.x -input bands.in > bands.out -npool 16 -ndiag 1
+#srun -n 1 pw2bgw.x -input pw2bgw.in > pw2bgw.out

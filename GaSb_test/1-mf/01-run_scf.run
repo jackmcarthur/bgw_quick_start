@@ -1,0 +1,26 @@
+#!/bin/bash
+#SBATCH --qos=debug
+#SBATCH --nodes=2
+#SBATCH --ntasks-per-node=4
+#SBATCH --gpus-per-task=1
+#SBATCH --gpu-bind=map_gpu:0,1,2,3
+#SBATCH -C gpu
+#SBATCH -t 00:08:00
+#SBATCH -J GaSb
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=jackslurmjobs@gmail.com
+#SBATCH -A m2651
+
+export SLURM_CPU_BIND="cores"
+export OMP_PROC_BIND=spread
+export OMP_PLACES=threads
+export OMP_NUM_THREADS=1
+
+#module load espresso/7.0-libxc-5.2.2-gpu
+QEPATH="$HOME/software/qe-7.2/build-pm-gpu/bin"
+BGWPATH="$HOME/software/BerkeleyGW-master/bin"
+#module load cpe/23.03
+
+module load espresso
+cd 1-scf/
+srun pw.x -input scf.in > scf.out

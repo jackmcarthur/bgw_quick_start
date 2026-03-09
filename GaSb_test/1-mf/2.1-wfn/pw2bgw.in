@@ -1,0 +1,25 @@
+&input_pw2bgw
+  prefix = 'GaSb'
+  wfng_flag = .false.
+  wfng_file = 'WFN'
+  real_or_complex = 2
+  wfng_kgrid = .true.
+  wfng_nk1 = 6
+  wfng_nk2 = 6
+  wfng_nk3 = 6
+  wfng_dk1 = 0.0
+  wfng_dk2 = 0.0
+  wfng_dk3 = 0.0
+  rhog_flag = .true.
+  vxc_flag = .true.
+  vxcg_flag = .false.
+  vxcg_file = 'VXC'
+  vscg_flag = .true.
+  vscg_file = 'VSC'
+  vkbg_flag = .true.
+  vkbg_file = 'VKB'
+  vxc_diag_nmin = 0
+  vxc_diag_nmax = 1000
+  kih_flag = .true.
+  kih_file = 'kih.dat'
+/

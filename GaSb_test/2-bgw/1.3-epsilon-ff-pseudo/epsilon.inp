@@ -1,0 +1,55 @@
+epsilon_cutoff 30.0
+number_bands  204
+use_wfn_hdf5
+degeneracy_check_override
+restart 
+
+# architecture-dependent tuning parameters for GPU algorithm:
+# (these values increase speed over the default settings at the cost of more memory, which is not a problem on NERSC.)
+n_ffts_per_batch 50
+accel_mtxel_band_block_size 50
+
+frequency_dependence 2
+frequency_dependence_method 2
+# plasma frequency not important; set to 2 Ry
+plasma_freq 27.21138506d0
+# following params recommended for frequency grid, all in eV:
+broadening 0.25
+delta_frequency 0.25
+frequency_low_cutoff 20.0
+number_imaginary_freqs 15
+
+# static subspace approx. parameters
+# this eigenvalue cutoff is shown to converge QP energies to within 20 meV, see Del Ben et al., PRB 2019.
+chi_eigenvalue_cutoff 0.01
+nbasis_subspace 1000
+write_subspace_epsinv
+cluster_size_subspace_diagonalization 1000
+
+begin qpoints
+  0.001000000  0.000000000  0.000000000  1.0 1
+  0.000000000  0.000000000  0.166666667  1.0 0
+  0.000000000  0.000000000  0.333333333  1.0 0
+  0.000000000  0.000000000  0.500000000  1.0 0
+  0.000000000  0.166666667  0.166666667  1.0 0
+  0.000000000  0.166666667  0.333333333  1.0 0
+  0.000000000  0.166666667  0.500000000  1.0 0
+  0.000000000  0.333333333  0.333333333  1.0 0
+  0.000000000  0.333333333  0.500000000  1.0 0
+  0.000000000  0.500000000  0.500000000  1.0 0
+  0.166666667  0.166666667  0.166666667  1.0 0
+  0.166666667  0.166666667  0.333333333  1.0 0
+  0.166666667  0.166666667  0.500000000  1.0 0
+  0.166666667  0.166666667  0.666666667  1.0 0
+  0.166666667  0.166666667  0.833333333  1.0 0
+  0.166666667  0.333333333  0.333333333  1.0 0
+  0.166666667  0.333333333  0.500000000  1.0 0
+  0.166666667  0.333333333  0.666666667  1.0 0
+  0.166666667  0.500000000  0.500000000  1.0 0
+  0.333333333  0.333333333  0.333333333  1.0 0
+  0.333333333  0.333333333  0.500000000  1.0 0
+  0.333333333  0.333333333  0.666666667  1.0 0
+  0.333333333  0.500000000  0.500000000  1.0 0
+  0.500000000  0.500000000  0.500000000  1.0 0
+end
+ 

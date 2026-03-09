@@ -1,0 +1,35 @@
+#!/bin/bash
+#SBATCH --qos=debug
+#SBATCH --nodes=4
+#SBATCH --ntasks-per-node=4
+#SBATCH --gpus-per-task=1
+#SBATCH --gpu-bind=map_gpu:0,1,2,3
+#SBATCH --cpus-per-task=32
+#SBATCH -C gpu
+#SBATCH -t 00:30:00
+#SBATCH -J GaSb
+##SBATCH --mail-type=ALL
+##SBATCH --mail-user=##
+#SBATCH -A ####
+
+export TEMPDIRPATH=$SCRATCH/tmp
+export OMP_PROC_BIND=true
+export OMP_PLACES=threads
+export HDF5_USE_FILE_LOCKING=FALSE
+export BGW_HDF5_WRITE_REDIST=1
+export BGW_WFN_HDF5_INDEPENDENT=1
+export OMP_NUM_THREADS=16
+export SLURM_CPU_BIND="cores"
+export MPIEXEC="`which srun` "
+
+module load berkeleygw/4.0-gpu
+#module swap PrgEnv-gnu PrgEnv-nvhpc ; module load cray-hdf5-parallel ; module load cray-fftw ; module load cray-libsci ; module load python
+
+cd 2.1-sigma-gpp-full
+srun -n 16 -c 32 sigma.cplx.x > sigma.out
+
+cd ../2.2-sigma-gpp-pseudo
+#srun -n 16 -c 32 sigma.cplx.x > sigma.out
+
+cd ../2.3-sigma-ff-pseudo
+#srun -n 24 -c 32 sigma.cplx.x > sigma.out
